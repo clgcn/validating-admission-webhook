@@ -1,0 +1,13 @@
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: denyenv.default
+spec:
+  signerName: beta.eks.amazonaws.com/app-serving
+  groups:
+    - system:authenticated
+  request: ""
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth

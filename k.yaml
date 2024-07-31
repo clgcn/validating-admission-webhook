@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: denyenv
+  name: denyenv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: denyenv
+  template:
+    metadata:
+      labels:
+        app: denyenv
+    spec:
+      containers:
+        - image: charlesguowh/denyenv-validating-admission-webhook:v3
+          env:
+            - name: CERT_DIR
+              value: "/etc/denyenv-webhook/certs"
+          name: denyenv
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/denyenv-webhook/certs/
+              name: tls-cert
+      volumes:
+        - name: tls-cert
+          secret:
+            secretName: denyenv-tls-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: denyenv
+  name: denyenv
+spec:
+  ports:
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 8000
+  selector:
+    app: denyenv
+  type: LoadBalancer 
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: denyenv
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      caBundle: "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJVzM3b3hNTGdqdXN3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TkRBM01qa3dNek0yTkRWYUZ3MHpOREEzTWpjd016UXhORFZhTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUUR6S2lUSFIzUzU0NUFEbnBXaHo4UUlqcVQxZlZPUXoyNlcyYXBiaTJ4Y052U3VZd2h1akQ0TEZyOWsKaXZmT01yR0E4MEkwbTdYMU5FRnFSeXhlTVF6c1doVUd2eDRYTU9WdmcwZit1RWNndFljMEFWY1hLUnZHVmFzdAo2dEltU1hybzRsdVpjdDJpamFQbHp6R3B0cnhGQUkxN3MxZVdzRUIySnNidUdsRTFNcWk3WnltQzZYeUtHWXdJCjNlQTUyWjIvTGRMZW8rY2pRd1Y3dUZFK1M4YmY4SUZpRGljU0JDRDBoZjVBNm1GRHliRVF3NHpPM3RGYW1jcU0KWmg4Z1I4bHZuNXhMbFNRT2pUOHlVR1lLUWQxMVVOZC9hRnF1S2g3UUMxYy90eWFweU9uUDk2c1h5bkQxQUJvWAp1eitCNGNCRnhHSUNSeU4xQ3c1UUtlVUZsVnJiQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJUeE1nYWd0T251am1ISlcvdVltNjZTT2ZSam1UQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQWVuVzBBQ2x0eAo2N3FSUTBDcm5zbGkxS0FXY3dERWtUYUt5MWxKZFZpaU5LbEVRSHlBUmdsdzV6K05Pa280czBvRXlhMDFuaGs3CmtWenl2MWVJS1dMYXNRQkR0MVZmZW5zL2tCdkxhUDV5bG9ybWFwZjhseElHcFBLUUQ1Q0NmT0tRV3JSbDliWWEKZFFyYytOUXQzd0xHcWZHMnJmK2k5SE5CenVvNmYrb3BkMEZ4SnJuUUJIQmNZNktrTzlUcEk5OXg2Y1lCcURPOQp4ZUpXTENzUDVrekhTVEt6TGZLVW1Pa0ZpYVkxYWdhUTNOQUVOSndkMG5FRXNGbU5QcDZzQy9sbzlLN2hyOEkzClZzcGc1NytwU3RFMU81ZmdSMWxpNHpFTWt5czh5WjZKclNhVWZ5anNPZnY1eWVabGpIQk84bnVQS0VqYlQ1MjQKUnZxTEJqb1A2Y1JqCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+      url: https://a132b2a401bc94e89a9bdb274c9cf5f3-876265843.eu-west-1.elb.amazonaws.com/validate
+    failurePolicy: Fail
+    matchPolicy: Exact
+    name: denyenv.zeng.dev
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+        resources:
+          - pods
+        scope: '*'
+    objectSelector:
+      matchExpressions:
+        - key: app
+          operator: NotIn
+          values:
+            - denyenv
+    sideEffects: None
+    timeoutSeconds: 30
